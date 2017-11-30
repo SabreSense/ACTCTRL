@@ -6,6 +6,7 @@ Welcome to the GitHub repository for all things to do with AVDASI 2 Team A work.
 Code for the flap control mechanism can be found within the Ctrl folder. There are three sets of code within these folders: Master, Prototype and Experimental. 'Experimental' code usually tests specific features and/or electronics setups. 'Prototype' code is the code specifically associated with running the prototype tabletop demonstrator model. Finally, the code that will be integrated into the wing will be added to the 'Master' folder.
 
 For any questions please email (in this order):
+
 (Head of Actuation and Control)        Adam Dobson          ad16205@my.bristol.ac.uk
 (Committe Chairman)                    Manuel Martinez      mm16011@my.bristol.ac.uk
 
