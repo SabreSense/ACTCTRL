@@ -7,7 +7,7 @@ Code for the flap control mechanism can be found within the Ctrl folder. There a
 
 For any questions please email (in this order):
 
-(Head of Actuation and Control)        Adam Dobson          ad16205@my.bristol.ac.uk
-(Committe Chairman)                    Manuel Martinez      mm16011@my.bristol.ac.uk
+<p>(Head of Actuation and Control)        Adam Dobson          ad16205@my.bristol.ac.uk</p>
+<p>(Committe Chairman)                    Manuel Martinez      mm16011@my.bristol.ac.uk</p>
 
 Good luck!
