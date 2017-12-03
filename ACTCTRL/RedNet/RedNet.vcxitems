@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{0dc7dfac-0349-43a4-b9e3-3e85332f7771}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="$(MSBuildThisFileDirectory)readme.txt" />
+    <Text Include="$(MSBuildThisFileDirectory)library.properties" />
+    <Text Include="$(MSBuildThisFileDirectory)RedNet.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ConfigManager.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)RedNet.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)SerialCom.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)SerialCommand.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ConfigManager.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)SerialCom.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)SerialCommand.h" />
+  </ItemGroup>
+</Project>
