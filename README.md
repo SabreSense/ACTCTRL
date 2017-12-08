@@ -13,4 +13,4 @@ Latest release is: v0.17.12.03
 For any questions please email (in this order):
 
 <p>Adam Dobson     ad16205@my.bristol.ac.uk (Head of Actuation and Control)</p>
-<p>Manuel Martinez mm16011@my.bristol.ac.uk (Committe Chairman)</p>
+<p>Manuel Martinez mm16011@my.bristol.ac.uk (Committee Chairman)</p>
