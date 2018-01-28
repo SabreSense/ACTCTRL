@@ -69,7 +69,8 @@ void SerialCom::establishContact(float angle) {
 
 // Establish contact by requesting ping
 void SerialCom::establishContactPing() {
-	digitalWrite(LED_BUILTIN, HIGH);
+	digitalWrite(_statusRedLight, HIGH);
+	digitalWrite(_statusGreenLight, LOW);
 	
 	bool contact = false;
 	while (contact == false) {
@@ -84,7 +85,8 @@ void SerialCom::establishContactPing() {
 		}
 		delay(200);
 	}
-	digitalWrite(LED_BUILTIN, LOW);
+	digitalWrite(_statusRedLight, LOW);
+	digitalWrite(_statusGreenLight, HIGH);
 	//Serial.print("A");
 	//Serial.print("Contact established");
 }
