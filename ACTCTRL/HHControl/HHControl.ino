@@ -201,9 +201,11 @@ void loop() {
 	}
 	else if (digitalRead(thrityBtnNum) == LOW) {
 		comNet.sendSerialCommand(1, 1, 30);
+		// Set desired position
 		flapSetPos = 30;
 	}
 
+	// Update current position
 	flapAvePos = comNet.serialFlapPos;
 
 	/*digitalWrite(tenGreen, LOW);
@@ -247,6 +249,7 @@ void loop() {
 		lcd.setCursor(0, 1);
 		lcd.print("                    ");
 	}
+
 	if (flapAvePos < 0) {
 		digitalWrite(tenGreen, HIGH);
 		digitalWrite(tenRed, LOW);
@@ -255,6 +258,7 @@ void loop() {
 		digitalWrite(tenGreen, LOW);
 		digitalWrite(tenRed, HIGH);
 	}
+
 	if (flapAvePos < flapTakeoffAngle && flapAvePos > -10) {
 		digitalWrite(zeroGreen, HIGH);
 		digitalWrite(zeroRed, LOW);
@@ -263,6 +267,7 @@ void loop() {
 		digitalWrite(zeroGreen, LOW);
 		digitalWrite(zeroRed, HIGH);
 	}
+
 	if (flapAvePos < 30 && flapAvePos > 0) {
 		digitalWrite(takeoffGreen, HIGH);
 		digitalWrite(takeoffRed, LOW);
@@ -271,6 +276,7 @@ void loop() {
 		digitalWrite(takeoffGreen, LOW);
 		digitalWrite(takeoffRed, HIGH);
 	}
+
 	if (flapAvePos > flapTakeoffAngle) {
 		digitalWrite(thrityGreen, HIGH);
 		digitalWrite(thirtyRed, LOW);
