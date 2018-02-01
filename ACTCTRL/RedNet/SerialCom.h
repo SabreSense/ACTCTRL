@@ -54,6 +54,9 @@ private:
 	int _valuePacket[7] = { 0,0,0,0,0,0,0 };
 	int _val = 0;
 
+	const int _statusRedLight = 12;
+	const int _statusGreenLight = 13;
+
 	// Various private functions
 	void executeCommonCommands(int packet[30]);
 	SerialCommand returnCommandInfo(int packet[30]);

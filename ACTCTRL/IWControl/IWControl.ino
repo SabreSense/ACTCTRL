@@ -47,10 +47,17 @@ Servo thisServo;
 // Declare Storage of Postion
 float servoAngle;
 
+const int statusGreen = 12;
+const int statusRed = 13;
+
 void setup() {
 	// Set servo and builtin LED pins
-	thisServo.attach(9);
-	pinMode(LED_BUILTIN, OUTPUT);
+	thisServo.attach(2);
+	pinMode(statusRed, OUTPUT);
+	pinMode(statusGreen, OUTPUT);
+
+	digitalWrite(statusRed, HIGH);
+	digitalWrite(statusGreen, LOW);
 
 	// Reset servo position
 	MoveServoToPosition(0);
@@ -62,8 +69,11 @@ void setup() {
 	//}
 	//comNet.establishContact();
 
-	// Establish contact wiht controller and convey initial position
+	// Establish contact with controller and convey initial position
 	comNet.establishContact(0);
+
+	digitalWrite(statusRed, LOW);
+	digitalWrite(statusGreen, HIGH);
 }
 
 // put your main code here, to run repeatedly:
@@ -113,7 +123,7 @@ void executeCommand(SerialCommand command) {
 	}
 	break;
 	default:
-		//        Serial.print("No instruction");
+		//Serial.print("No instruction");
 		break;
 	}
 }
@@ -125,4 +135,6 @@ void MoveServoToPosition(float angle) {
 	//servoAngle = angle + 90;
 	servoAngle = (angle + 10) * 180 / 40;
 	thisServo.write(servoAngle);
+	delay(3000);
+	thisServo.write(90);
 }
