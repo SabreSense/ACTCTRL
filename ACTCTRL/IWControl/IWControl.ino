@@ -42,32 +42,60 @@ SerialCom comNet;
 // Library for handling servo motor
 #include <Servo.h>
 
+// Library for handling encoder input
+#include <Encoder-master\Encoder.h>
+
 // Declare servo motor
 Servo thisServo;
 // Declare Storage of Postion
-float servoAngle;
+float servoAngle = 0;
+float desiredAngle = 0;
+float lastTransmitAngle = 0;
 
 const int statusGreen = 12;
 const int statusRed = 13;
 
+const int thirtyInput = 8;
+const int zeroInput = 9;
+const int tenInput = 10;
+
+const int EncoderPinA = 2;
+const int EncoderPinB = 3;
+
+const int upSpeed = 0;
+const int downSpeed = 180;
+const int upCreepSpeed = 80;
+const int downCreepSpeed = 100;
+const int stopSpeed = 90;
+
+Encoder thisEncoder(EncoderPinA, EncoderPinB);
+
 void setup() {
 	// Set servo and builtin LED pins
-	thisServo.attach(2);
+	thisServo.attach(7);
 	pinMode(statusRed, OUTPUT);
 	pinMode(statusGreen, OUTPUT);
+
+	// Set light gate input pins
+	pinMode(thirtyInput, INPUT);
+	pinMode(zeroInput, INPUT);
+	pinMode(tenInput, INPUT);
 
 	digitalWrite(statusRed, HIGH);
 	digitalWrite(statusGreen, LOW);
 
 	// Reset servo position
 	MoveServoToPosition(0);
+
+	while (servoAngle != 0) {
+		ServoControl();
+	}
 	
 	// Begin network communications
 	comNet.Begin();
 	//while (!Serial) {
 	//; // Wait for USB serial to connect. Remove for chip-to-chip serial
 	//}
-	//comNet.establishContact();
 
 	// Establish contact with controller and convey initial position
 	comNet.establishContact(0);
@@ -89,8 +117,23 @@ void loop() {
 		}
 	}
 
+	ServoControl();
+
+	float transmitDiff = lastTransmitAngle - servoAngle;
+
+	if (abs(transmitDiff) > 1) {
+		comNet.sendSerialCommand(2, 1, servoAngle);
+		digitalWrite(statusRed, HIGH);
+		digitalWrite(statusGreen, LOW);
+	}
+
 	// If command to be sent, send command
-	comNet.WriteSerialCommand();
+	bool sent = comNet.WriteSerialCommand();
+	if (sent) {
+		lastTransmitAngle = servoAngle;
+		digitalWrite(statusRed, LOW);
+		digitalWrite(statusGreen, HIGH);
+	}
 }
 
 // SERIAL INPUT AND COMMAND EXECUTION
@@ -114,7 +157,7 @@ void executeCommand(SerialCommand command) {
 		MoveServoToPosition(angle);
 		//createOutputPacket(2, 1, angle, responsePacket);
 		//Serial.write(responsePacket, crtPackLength);
-		comNet.sendSerialCommand(2, 1, angle);
+		comNet.sendSerialCommand(2, 1, servoAngle);
 
 		// DEBUG ONLY
 		//Serial.write(" Moving Servo: ");
@@ -131,10 +174,53 @@ void executeCommand(SerialCommand command) {
 // SERVO RESPONSE
 // --------------
 
+// Function to enact a servo response. Kept from days of regular servos, and maintained so that a return to regular servos
+// would not be too diffulct to enable
 void MoveServoToPosition(float angle) {
 	//servoAngle = angle + 90;
-	servoAngle = (angle + 10) * 180 / 40;
-	thisServo.write(servoAngle);
-	delay(3000);
-	thisServo.write(90);
+	//servoAngle = (angle + 10) * 180 / 40;
+	//thisServo.write(servoAngle);
+	//delay(3000);
+	//thisServo.write(90);
+	desiredAngle = angle;
+}
+
+// Function to actually control the servos, including taking imputs as relevent. Should be nested in loops.
+void ServoControl() {
+	if (digitalRead(thirtyInput) == HIGH) {
+		servoAngle = 30;
+	}
+	else if (digitalRead(tenInput) == HIGH) {
+		servoAngle = -10;
+	}
+	else if (digitalRead(zeroInput) == HIGH) {
+		servoAngle = 0;
+	}
+
+	servoAngle = thisEncoder.read() / 4;
+
+	float error = desiredAngle - servoAngle;
+
+	// Simple servo movement based upon light gate sensesing
+	/*if (servoAngle > desiredAngle) {
+		if ((servoAngle - desiredAngle) < 3) {
+			thisServo.write(upCreepSpeed);
+		}
+		else {
+			thisServo.write(upSpeed);
+		}
+	}
+	else if (servoAngle < desiredAngle) {
+		if ((desiredAngle - servoAngle) < 3) {
+			thisServo.write(downCreepSpeed);
+		}
+		else {
+			thisServo.write(downSpeed);
+		}
+	}
+	else {
+		thisServo.write(stopSpeed);
+	}*/
+	
+	thisServo.write(stopSpeed + error);
 }

@@ -102,16 +102,18 @@ void SerialCom::sendSerialCommand(int packetType, int dataType, float value)
 	_sent = false;
 }
 
-void SerialCom::WriteSerialCommand() {
+bool SerialCom::WriteSerialCommand() {
 	// If command to be sent, send command
 	if (Serial.available() <= 0 && _sent == false) {
 		Serial.write(_messagePacket, configuration.crtPackLength);
 		_sent = true;
 		delay(500);
 		//digitalWrite(motorLight, LOW);
+		return true;
 	}
 	else if (_sent == false) {
 		//digitalWrite(motorLight, HIGH);
+		return false;
 	}
 }
 

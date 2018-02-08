@@ -25,7 +25,7 @@ public:
 	void establishContactPing();
 	void establishContact(float angle);
 	void sendSerialCommand(int packetType, int dataType, float value);
-	void WriteSerialCommand();
+	bool WriteSerialCommand();
 	SerialCommand readSerialInput();
 
 	// Keeps track of current network configuration
