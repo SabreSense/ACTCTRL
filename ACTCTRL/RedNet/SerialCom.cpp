@@ -107,12 +107,15 @@ bool SerialCom::WriteSerialCommand() {
 	if (Serial.available() <= 0 && _sent == false) {
 		Serial.write(_messagePacket, configuration.crtPackLength);
 		_sent = true;
-		delay(500);
+		//delay(500);
 		//digitalWrite(motorLight, LOW);
 		return true;
 	}
-	else if (_sent == false) {
-		//digitalWrite(motorLight, HIGH);
+	//else if (_sent == false) {
+	//	//digitalWrite(motorLight, HIGH);
+	//	return false;
+	//}
+	else {
 		return false;
 	}
 }

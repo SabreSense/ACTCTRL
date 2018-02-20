@@ -37,7 +37,7 @@ private:
 	// Declare packet for response
 	byte _messagePacket[30];
 	// Keep track of whether message sent
-	bool _sent = true;
+	bool _sent = false;
 
 	// Counts pings for arbitrary data return
 	int _pingCount = 0;

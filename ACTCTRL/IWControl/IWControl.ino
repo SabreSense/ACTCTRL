@@ -8,6 +8,10 @@
 //For use for AVDASI 2 TEAM A Wing Build 2017
 //-------------------------------------------
 
+// THIRD-PARTY LIBRARIES
+// ---------------------
+// Encoder.h (Paul Stoffregen, 2011) https://github.com/ericbarch/arduino-libraries/blob/master/Encoder/Encoder.h
+
 // SUMMARY
 // -------
 // A set of serial functions serving to lay groundwork for communication between arduinos. 
@@ -52,6 +56,17 @@ float servoAngle = 0;
 float desiredAngle = 0;
 float lastTransmitAngle = 0;
 
+// Declares last error for PI loop feedback control
+float lastError = 0;
+float lastTime = 0;
+
+const float servoPGain = 2;
+const float servoIGain = 0.25;
+
+// Declare storage of maximum encoder position
+float encoderMaxAngle = 30;
+float encoderMinAngle = -10;
+
 const int statusGreen = 12;
 const int statusRed = 13;
 
@@ -64,8 +79,8 @@ const int EncoderPinB = 3;
 
 const int upSpeed = 0;
 const int downSpeed = 180;
-const int upCreepSpeed = 80;
-const int downCreepSpeed = 100;
+const int upCreepSpeed = 70;
+const int downCreepSpeed = 110;
 const int stopSpeed = 90;
 
 Encoder thisEncoder(EncoderPinA, EncoderPinB);
@@ -73,6 +88,7 @@ Encoder thisEncoder(EncoderPinA, EncoderPinB);
 void setup() {
 	// Set servo and builtin LED pins
 	thisServo.attach(7);
+	thisServo.write(stopSpeed);
 	pinMode(statusRed, OUTPUT);
 	pinMode(statusGreen, OUTPUT);
 
@@ -81,16 +97,22 @@ void setup() {
 	pinMode(zeroInput, INPUT);
 	pinMode(tenInput, INPUT);
 
-	digitalWrite(statusRed, HIGH);
+	digitalWrite(statusRed, LOW);
 	digitalWrite(statusGreen, LOW);
 
 	// Reset servo position
-	MoveServoToPosition(0);
+	//MoveServoToPosition(0);
 
-	while (servoAngle != 0) {
-		ServoControl();
-	}
+	// Zero encoder (rough approximation)
 	
+
+	/*while (servoAngle != 0) {
+		ServoControl();
+	}*/
+	
+	digitalWrite(statusRed, HIGH);
+	digitalWrite(statusGreen, LOW);
+
 	// Begin network communications
 	comNet.Begin();
 	//while (!Serial) {
@@ -99,6 +121,10 @@ void setup() {
 
 	// Establish contact with controller and convey initial position
 	comNet.establishContact(0);
+
+	//encoderTest();
+
+	initialiseServos();
 
 	digitalWrite(statusRed, LOW);
 	digitalWrite(statusGreen, HIGH);
@@ -187,7 +213,7 @@ void MoveServoToPosition(float angle) {
 
 // Function to actually control the servos, including taking imputs as relevent. Should be nested in loops.
 void ServoControl() {
-	if (digitalRead(thirtyInput) == HIGH) {
+	/*if (digitalRead(thirtyInput) == HIGH) {
 		servoAngle = 30;
 	}
 	else if (digitalRead(tenInput) == HIGH) {
@@ -195,11 +221,31 @@ void ServoControl() {
 	}
 	else if (digitalRead(zeroInput) == HIGH) {
 		servoAngle = 0;
-	}
+	}*/
 
-	servoAngle = thisEncoder.read() / 4;
+	float linearAngle = (((thisEncoder.read() - encoderMinAngle) / (encoderMaxAngle - encoderMinAngle)) * 40);
+
+	servoAngle = (0.025*pow(linearAngle, 2)) + 4 * pow(10, -15)*linearAngle - 10;
 
 	float error = desiredAngle - servoAngle;
+
+	//float deltaError = error - lastError;
+
+	float integralError = (micros() - lastTime)*(error - lastError);
+	lastError = error;
+	lastTime = micros();
+
+	float deadzoneCorrection = 0;
+
+	if (abs(error) < 5 && abs(error) > 1) {
+		deadzoneCorrection = 5;
+		if (error < 0) {
+			deadzoneCorrection = -deadzoneCorrection;
+		}
+	}
+
+	// DEBUG ONLY
+	//Serial.print(error);
 
 	// Simple servo movement based upon light gate sensesing
 	/*if (servoAngle > desiredAngle) {
@@ -222,5 +268,76 @@ void ServoControl() {
 		thisServo.write(stopSpeed);
 	}*/
 	
-	thisServo.write(stopSpeed + error);
+	//thisServo.write(stopSpeed + error*servoPGain + integralError*servoIGain);
+	float servoPower = stopSpeed + error*servoPGain + deadzoneCorrection;
+
+	thisServo.write(servoPower);
+}
+
+void initialiseServos() {
+	thisServo.write(upCreepSpeed);
+	delay(200);
+
+	int lastEncoderPos = thisEncoder.read();
+	int timeOut = 0;
+
+	while (timeOut < 10)
+	{
+		int newPos = thisEncoder.read();
+		int encoderDiff = newPos - lastEncoderPos;
+		if (encoderDiff != 0) {
+			timeOut = 0;
+		}
+		timeOut = timeOut + 1;
+		lastEncoderPos = newPos;
+		delay(200);
+
+		// DEBUG ONLY
+		//Serial.print(encoderDiff);
+		Serial.print(newPos);
+	}
+
+	thisServo.write(stopSpeed);
+	encoderMinAngle = thisEncoder.read();
+	lastEncoderPos = thisEncoder.read();
+	timeOut = 0;
+	delay(100);
+	thisServo.write(downCreepSpeed);
+	delay(200);
+	while (timeOut < 10)
+	{
+		int newPos = thisEncoder.read();
+		int encoderDiff = newPos - lastEncoderPos;
+		if (encoderDiff != 0) {
+			timeOut = 0;
+		}
+		timeOut = timeOut + 1;
+		lastEncoderPos = newPos;
+		delay(200);
+
+		// DEBUG ONLY
+		//Serial.print(encoderDiff);
+		Serial.print(newPos);
+	}
+
+	thisServo.write(stopSpeed);
+	encoderMaxAngle = thisEncoder.read();
+	servoAngle = 30;
+	//thisEncoder.
+}
+
+
+
+void encoderTest() {
+	float newPos;
+	float oldPos;
+	int countOut = 0;
+
+	while (countOut < 50) {
+		newPos = thisEncoder.read();
+		if (newPos != oldPos) {
+			Serial.print(newPos);
+			oldPos = newPos;
+		}
+	}	
 }
