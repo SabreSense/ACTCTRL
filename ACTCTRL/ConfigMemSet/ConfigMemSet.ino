@@ -79,13 +79,6 @@ void setup() {
 	float servoBOffsetVal = 0;
 
 	// Use configManager to write these values to the specific locations in memory
-
-	/*EEPROM.write(configuration._controlIDMem, controlVal);
-	EEPROM.write(configuration._netSizeMem, netVal);
-	writeFloatValue(configuration._lowerLimitMem, lowerLimit);
-	writeFloatValue(configuration._upperLimitMem, upperLimit);
-	writeFloatValue(configuration._takeOffMem, takeOffVal);*/
-
 	configuration.SetControlID(controlVal);
 	configuration.SetNetSize(netVal);
 	configuration.SetLowerLimit(lowerLimit);
