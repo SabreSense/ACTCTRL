@@ -12,6 +12,8 @@
 	#include "arduino.h"
 	#include "ConfigManager.h"
 	#include "SerialCommand.h"
+	#include "DataByteConverter.h"
+	#include <SoftwareSerial.h>
 #else
 	#include "WProgram.h"
 #endif
@@ -20,6 +22,7 @@ class SerialCom {
 public:
 	SerialCom();
 	void Begin();
+	void Begin(HardwareSerial *desiredSerial, float flapAngle);
 
 	void establishContact();
 	void establishContactPing();
@@ -31,7 +34,11 @@ public:
 	// Keeps track of current network configuration
 	ConfigManager configuration;
 
+	// Allows conversion into data bytes arrays#
+	DataByteConverter dataConverter;
+
 	float serialFlapPos;
+	bool stopped = true;
 
 private:
 	// Declare packet for response
@@ -54,8 +61,11 @@ private:
 	int _valuePacket[7] = { 0,0,0,0,0,0,0 };
 	int _val = 0;
 
-	const int _statusRedLight = 12;
-	const int _statusGreenLight = 13;
+	const int _statusRedLight = 13;
+	const int _statusGreenLight = 12;
+
+	// Storing Serial Port to Use for Comms
+	HardwareSerial *thisSerial = &Serial;
 
 	// Various private functions
 	void executeCommonCommands(int packet[30]);
@@ -67,10 +77,10 @@ private:
 	bool checkSumCheck(int packet[30]);
 	int calcChkSum(int packet[30]);
 	bool getValueSection(int returnArray[7], int inputPacket[30]);
-	float messageValue(int valueArray[7]);
+	//float messageValue(int valueArray[7]);
 	void getChkBytes(int chkSum, int values[2]);
 	void createOutputPacket(int type, int dataType, float value, byte responsePacket[30]);
-	void floatToMessageValue(float value, int responseBytes[7]);
+	//void floatToMessageValue(float value, int responseBytes[7]);
 };
 
 #endif
