@@ -31,6 +31,7 @@ public:
 	void SetServoUpLimit(int value);
 	void SetServoDownLimit(int value);
 	void SetServoBOffset(int value);
+	void SetLCDBrightness(bool value);
 
 	// These are the publically accessible versions of the variables
 	int NetSize() { if (!loaded) { return GetNetSize(); } else { return netSize; } }
@@ -41,6 +42,7 @@ public:
 	int ServoUpLimit() { if (!loaded) { return GetServoUpLimit(); } else { return servoUpLimit; } }
 	int ServoDownLimit() { if (!loaded) { return GetServoDownLimit(); } else { return servoDownLimit; } }
 	int ServoBOffset() { if (!loaded) { return GetServoBOffset(); } else { return servoBOffset; } }
+	bool LCDBrightness() { if (!loaded) { return GetLCDBrightness(); } else { return lcdBrightness; } }
 
 	// Track current packet length
 	int CrtPackLength() { if (!loaded) { return GetCrtPackLength(); } else { return 19; } }
@@ -55,6 +57,7 @@ public:
 	int GetServoDownLimit();
 	int GetServoBOffset();
 	int GetCrtPackLength();
+	bool GetLCDBrightness();
 
 	// Memory address declarations
 	const int _controlIDMem = 0;
@@ -65,7 +68,8 @@ public:
 	const int _takeOffMem = 30;
 	const int _servoUpLimitMem = 40;
 	const int _servoDownLimitMem = 60;
-	const int _servoBOffset = 70;
+	const int _servoBOffsetMem = 70;
+	const int _lcdBrightnessMem = 80;
 protected:
 	// Declare size of control network i.e. number of in-wing arduinos, plus this controller's ID
 	
@@ -85,6 +89,7 @@ private:
 	int servoUpLimit;
 	int servoDownLimit;
 	int servoBOffset;
+	bool lcdBrightness;
 
 	//float getFloatValue(int memAddress);
 

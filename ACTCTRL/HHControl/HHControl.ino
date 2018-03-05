@@ -130,7 +130,8 @@ void setup() {
 
 	//Initialise the LCD screen
 	lcd.begin(columnSize, rowSize);
-	lcd.setBacklight(HIGH);
+	//lcd.setBacklight(HIGH);
+	adjustBrightness(comNet.configuration.GetLCDBrightness());
 	// Print boot message to the LCD.
 	lcd.print("Flap Controller v0.2");
 	lcd.setCursor(0, 1);
@@ -188,8 +189,16 @@ void setup() {
 // put your main code here, to run repeatedly:
 void loop() {
 
+	// Reset status lights
+	digitalWrite(statusGreenPin, HIGH);
+	digitalWrite(statusRedPin, LOW);
+
 	// If serial input available, run serial input functions
 	comNet.readSerialInput();
+
+	if (digitalRead(upperLimitPin) == LOW && digitalRead(lowerLimitPin) == LOW) {
+		runConfigMode();
+	}
 
 	if (digitalRead(zeroBtnPin) == LOW)
 	{
@@ -299,6 +308,178 @@ void clrScreen() {
 			lcd.print(" ");
 		}
 	}
+}
+
+void adjustBrightness(bool onOff) {
+	if (onOff) {
+		lcd.setBacklight(HIGH);
+	}
+	else {
+		lcd.setBacklight(LOW);
+	}
+}
+
+void runConfigMode() {
+	clrScreen();
+	lcd.setCursor(0, 0);
+	lcd.print("Select setting:");
+	String settingNames[4] = { "LCD Brightness  ", "Up Position     ", "Down Position   ", "Servo Offset    " };
+	bool exit = false;
+	bool reset = true;
+	int lastEncoderPosition = thisEncoder.read();
+	int position = 1;
+	while (!exit) {
+		int encoderDiff = lastEncoderPos - thisEncoder.read();
+		if (abs(encoderDiff) >= 4 || reset) {
+			//position = position + encoderDiff;
+			delay(500);
+			reset = false;
+			lastEncoderPos = thisEncoder.read();
+			int settingsLength = 4;
+			if (encoderDiff > 0) {
+				encoderDiff = 1;
+			}
+			else {
+				encoderDiff = -1;
+			}
+			position = correctLineNumber(position, encoderDiff, settingsLength);
+			int preLine = correctLineNumber(position, -1, settingsLength);
+			int nextLine = correctLineNumber(position, +1, settingsLength);
+			String PreLine = ">  " + settingNames[preLine-1];
+			String ThisLine = ">> " + settingNames[position-1];
+			String NextLine = ">  " + settingNames[nextLine-1];
+			lcd.setCursor(0, 1);
+			lcd.print(PreLine);
+			lcd.setCursor(0, 2);
+			lcd.print(ThisLine);
+			lcd.setCursor(0, 3);
+			lcd.print(NextLine);
+		}
+		if (digitalRead(takeoffBtnPin) == LOW) {
+			int value = 0;
+			switch (position) {
+			case 1:
+				value = changeBoolSettingValue(settingNames[0], comNet.configuration.GetLCDBrightness());
+				comNet.configuration.SetLCDBrightness(value);
+				adjustBrightness(value);
+				break;
+			case 2:
+				value = changeNumericSettingValue(settingNames[1], comNet.configuration.ServoUpLimit(), 0, comNet.configuration.ServoDownLimit());
+				comNet.configuration.SetServoUpLimit(value);
+				comNet.sendSerialCommand(0, 2, value);
+				break;
+			case 3:
+				value = changeNumericSettingValue(settingNames[2], comNet.configuration.ServoDownLimit(), comNet.configuration.ServoUpLimit(), 180);
+				comNet.configuration.SetServoDownLimit(value);
+				comNet.sendSerialCommand(0, 3, value);
+				break;
+			case 4:
+				value = changeNumericSettingValue(settingNames[3], comNet.configuration.ServoBOffset(), -20, 20);
+				comNet.configuration.SetServoBOffset(value);
+				comNet.sendSerialCommand(0, 4, value);
+				break;
+			default:
+				break;
+			}
+			comNet.WriteSerialCommand();
+			reset = true;
+			delay(500);
+			lcd.setCursor(0, 0);
+			lcd.print("Select setting:");
+		}
+		if (digitalRead(stopBtnPin) == LOW) {
+			exit = true;
+		}
+	}
+	clrScreen();
+}
+
+int changeNumericSettingValue(String name, int initialValue, int minValue, int maxValue) {
+	int value = initialValue;
+	clrScreen();
+	lcd.setCursor(0, 0);
+	lcd.print(name);
+	lcd.setCursor(0, 1);
+	lcd.print(value);
+	int lastEncoderPosition = thisEncoder.read();
+	bool exit = false;
+	while (!exit) {
+		float encoderDiff = lastEncoderPos - thisEncoder.read();
+		if (abs(encoderDiff) >= 4) {
+			value = value - encoderDiff / 4;
+			lastEncoderPos = thisEncoder.read();
+			if (value < minValue) {
+				value = minValue;
+			}
+			else if (value > maxValue) {
+				value = maxValue;
+			}
+			lcd.setCursor(0, 1);
+			lcd.print(value);
+			lcd.print("  ");
+		}
+		if (digitalRead(takeoffBtnPin) == LOW) {
+			exit = true;
+		}
+		if (digitalRead(stopBtnPin) == LOW) {
+			value = initialValue;
+			exit = true;
+		}
+	}
+	return value;
+}
+
+bool changeBoolSettingValue(String name, bool initialValue) {
+	int value = initialValue;
+	clrScreen();
+	lcd.setCursor(0, 0);
+	lcd.print(name);
+	lcd.setCursor(0, 1);
+	printOnOff(value);
+	int lastEncoderPosition = thisEncoder.read();
+	bool exit = false;
+	while (!exit) {
+		float encoderDiff = lastEncoderPos - thisEncoder.read();
+		if (abs(encoderDiff) >= 4) {
+			lastEncoderPos = thisEncoder.read();
+			if (value) {
+				value = false;
+			}
+			else {
+				value = true;
+			}
+			lcd.setCursor(0, 1);
+			printOnOff(value);
+		}
+		if (digitalRead(takeoffBtnPin) == LOW) {
+			exit = true;
+		}
+		if (digitalRead(stopBtnPin) == LOW) {
+			value = initialValue;
+			exit = true;
+		}
+	}
+	return value;
+}
+
+void printOnOff(bool value) {
+	if (value) {
+		lcd.print("On ");
+	}
+	else {
+		lcd.print("Off");
+	}
+}
+
+int correctLineNumber(int position, int diff, int numberOfStrings) {
+	position = position + diff;
+	if (position < 1) {
+		position = numberOfStrings;
+	}
+	else if (position > numberOfStrings) {
+		position = 1;
+	}
+	return position;
 }
 
 // FLAP ANGLE CHECKING

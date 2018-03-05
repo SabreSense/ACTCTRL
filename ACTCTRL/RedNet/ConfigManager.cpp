@@ -20,6 +20,9 @@ void ConfigManager::Init() {
 	lowerLimit = GetLowerLimit();
 	upperLimit = GetUpperLimit();
 	takeOff = GetTakeOff();
+	servoUpLimit = GetServoUpLimit();
+	servoDownLimit = GetServoDownLimit();
+	servoBOffset = GetServoBOffset();
 
 	crtPackLength = _stdPack + 2 * netSize;
 
@@ -74,8 +77,14 @@ int ConfigManager::GetServoDownLimit() {
 
 int ConfigManager::GetServoBOffset() {
 	int thisR = 110;
-	servoBOffset = EEPROM.get(_servoBOffset, thisR);
+	servoBOffset = EEPROM.get(_servoBOffsetMem, thisR);
 	return servoBOffset;
+}
+
+bool ConfigManager::GetLCDBrightness() {
+	bool thisR = true;
+	lcdBrightness = EEPROM.get(_lcdBrightnessMem, thisR);
+	return lcdBrightness;
 }
 
 int ConfigManager::GetCrtPackLength() {
@@ -98,38 +107,51 @@ int ConfigManager::GetCrtPackLength() {
 
 void ConfigManager::SetControlID(int value) {
 	EEPROM.write(_controlIDMem, value);
+	controlID = value;
 }
 
 void ConfigManager::SetNetSize(int value) {
 	EEPROM.write(_netSizeMem, value);
 	crtPackLength = _stdPack + 2 * value;
+	netSize = value;
 }
 
 void ConfigManager::SetLowerLimit(int value) {
 	//writeFloatValue(_lowerLimitMem, value);
 	EEPROM.put(_lowerLimitMem, value);
+	lowerLimit = value;
 }
 
 void ConfigManager::SetUpperLimit(int value) {
 	//writeFloatValue(_upperLimitMem, value);
 	EEPROM.put(_upperLimitMem, value);
+	upperLimit = value;
 }
 
 void ConfigManager::SetTakeOff(int value) {
 	//writeFloatValue(_takeOffMem, value);
 	EEPROM.put(_takeOffMem, value);
+	takeOff = value;
 }
 
 void ConfigManager::SetServoUpLimit(int value) {
 	EEPROM.put(_servoUpLimitMem, value);
+	servoUpLimit = value;
 }
 
 void ConfigManager::SetServoDownLimit(int value) {
 	EEPROM.put(_servoDownLimitMem, value);
+	servoDownLimit = value;
 }
 
 void ConfigManager::SetServoBOffset(int value) {
-	EEPROM.put(_servoBOffset, value);
+	EEPROM.put(_servoBOffsetMem, value);
+	servoBOffset = value;
+}
+
+void ConfigManager::SetLCDBrightness(bool value) {
+	EEPROM.put(_lcdBrightnessMem, value);
+	lcdBrightness = value;
 }
 
 // Write a float or int value to an array location

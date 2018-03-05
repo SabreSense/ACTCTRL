@@ -167,6 +167,12 @@ void loop() {
 		executeCommand(command);
 	}
 
+	// Reinitialise servos if new config data available
+	if (comNet.configReset = true) {
+		initialiseServos();
+		comNet.configReset = false;
+	}
+
 	if (digitalRead(upAPin) == LOW) {
 		digitalWrite(LED_BUILTIN, HIGH);
 		Serial.print("Up A Switch Triggered");
@@ -197,6 +203,10 @@ void loop() {
 		// DEBUG ONLY
 		//digitalWrite(statusRed, HIGH);
 		//digitalWrite(statusGreen, LOW);
+	}
+
+	if (comNet.timedOut == true) {
+		comNet.sendSerialCommand(2, 1, servoAngle);
 	}
 
 	// If command to be sent, send command

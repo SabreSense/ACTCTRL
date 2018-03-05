@@ -39,6 +39,9 @@ public:
 
 	float serialFlapPos;
 	bool stopped = true;
+	bool timedOut = false;
+
+	bool configReset = false;
 
 private:
 	// Declare packet for response
@@ -81,6 +84,7 @@ private:
 	void getChkBytes(int chkSum, int values[2]);
 	void createOutputPacket(int type, int dataType, float value, byte responsePacket[30]);
 	//void floatToMessageValue(float value, int responseBytes[7]);
+	int lastComTime = 0;
 };
 
 #endif
