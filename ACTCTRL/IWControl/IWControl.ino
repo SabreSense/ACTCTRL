@@ -96,8 +96,9 @@ const int downCreepSpeed = 110;
 const int stopSpeed = 90;
 
 const int zeroPos = 90;
-const int upPos = 50;
-const int downPos = 110;
+int upPos = 50;
+int downPos = 110;
+int servoBOffset = 0;
 
 // Declare pin to detect whether cable connected
 const int connectPin = 4;
@@ -152,6 +153,7 @@ void setup() {
 
 	digitalWrite(statusRed, HIGH);
 	digitalWrite(statusGreen, LOW);
+	desiredAngle = 0;
 }
 
 // put your main code here, to run repeatedly:
@@ -346,13 +348,16 @@ void ServoControl() {
 			desiredServoInput = downPos;
 		}
 		servoA.write(desiredServoInput);
-		servoB.write(desiredServoInput);
+		servoB.write(desiredServoInput + servoBOffset);
 	}
 }
 
 void initialiseServos() {
+	upPos = comNet.configuration.GetServoUpLimit();
+	downPos = comNet.configuration.GetServoDownLimit();
+	servoBOffset = comNet.configuration.GetServoBOffset();
 	servoA.write(upPos);
-	servoB.write(upPos);
+	servoB.write(upPos + servoBOffset);
 	delay(200);
 
 	int lastEncoderPosA = encoderA.read();
@@ -390,7 +395,7 @@ void initialiseServos() {
 	timeOut = 0;
 	delay(100);
 	servoA.write(downPos);
-	servoB.write(downPos);
+	servoB.write(downPos + servoBOffset);
 	delay(200);
 	while (timeOut < 20)
 	{
@@ -420,6 +425,7 @@ void initialiseServos() {
 	encoderMaxAngleB = encoderB.read();
 	servoAngleA = 30;
 	servoAngleB = 30;
+	servoAngle = 30;
 	//thisEncoder.
 }
 
