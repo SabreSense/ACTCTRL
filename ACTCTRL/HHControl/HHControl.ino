@@ -241,7 +241,6 @@ void loop() {
 
 	if (abs(encDiff) > 4) {
 		int angleDiff = encDiff / 4;
-		comNet.sendSerialCommand(1, 1, flapAvePos + angleDiff);
 		// Set desired position
 		flapSetPos = flapSetPos + angleDiff;
 		if (flapSetPos > comNet.configuration.LowerLimit()) {
@@ -250,6 +249,7 @@ void loop() {
 		else if (flapSetPos < comNet.configuration.UpperLimit()) {
 			flapSetPos = comNet.configuration.UpperLimit();
 		}
+		comNet.sendSerialCommand(1, 1, flapSetPos);
 		lastEncoderPos = thisEncoder.read();
 		digitalWrite(trimIndPin, HIGH);
 	}
@@ -323,7 +323,7 @@ void runConfigMode() {
 	clrScreen();
 	lcd.setCursor(0, 0);
 	lcd.print("Select setting:");
-	String settingNames[4] = { "LCD Brightness  ", "Up Position     ", "Down Position   ", "Servo Offset    " };
+	String settingNames[6] = { "LCD Brightness  ", "TakeOff Angle   ", "Up Position     ", "Down Position   ", "Servo Offset    ", "Resync All      " };
 	bool exit = false;
 	bool reset = true;
 	int lastEncoderPosition = thisEncoder.read();
@@ -335,7 +335,7 @@ void runConfigMode() {
 			delay(500);
 			reset = false;
 			lastEncoderPos = thisEncoder.read();
-			int settingsLength = 4;
+			int settingsLength = 6;
 			if (encoderDiff > 0) {
 				encoderDiff = 1;
 			}
@@ -364,19 +364,42 @@ void runConfigMode() {
 				adjustBrightness(value);
 				break;
 			case 2:
-				value = changeNumericSettingValue(settingNames[1], comNet.configuration.ServoUpLimit(), 0, comNet.configuration.ServoDownLimit());
+				value = changeNumericSettingValue(settingNames[1], comNet.configuration.TakeOff(), -10, 30);
+				comNet.configuration.SetTakeOff(value);
+				comNet.sendSerialCommand(0, 5, value);
+			case 3:
+				value = changeNumericSettingValue(settingNames[2], comNet.configuration.ServoUpLimit(), 0, comNet.configuration.ServoDownLimit());
 				comNet.configuration.SetServoUpLimit(value);
 				comNet.sendSerialCommand(0, 2, value);
 				break;
-			case 3:
-				value = changeNumericSettingValue(settingNames[2], comNet.configuration.ServoDownLimit(), comNet.configuration.ServoUpLimit(), 180);
+			case 4:
+				value = changeNumericSettingValue(settingNames[3], comNet.configuration.ServoDownLimit(), comNet.configuration.ServoUpLimit(), 180);
 				comNet.configuration.SetServoDownLimit(value);
 				comNet.sendSerialCommand(0, 3, value);
 				break;
-			case 4:
-				value = changeNumericSettingValue(settingNames[3], comNet.configuration.ServoBOffset(), -20, 20);
+			case 5:
+				value = changeNumericSettingValue(settingNames[4], comNet.configuration.ServoBOffset(), -20, 20);
 				comNet.configuration.SetServoBOffset(value);
 				comNet.sendSerialCommand(0, 4, value);
+				break;
+			case 6:
+				value = changeBoolSettingValue(settingNames[5], false);
+				if (value == true) {
+					lcd.setCursor(0, 2);
+					lcd.print("Resyncing Config... ");
+					comNet.sendSerialCommand(0, 5, comNet.configuration.GetTakeOff());
+					comNet.WriteSerialCommand();
+					delay(200);
+					comNet.sendSerialCommand(0, 2, comNet.configuration.GetServoUpLimit());
+					comNet.WriteSerialCommand();
+					delay(200);
+					comNet.sendSerialCommand(0, 3, comNet.configuration.GetServoDownLimit());
+					comNet.WriteSerialCommand();
+					delay(200);
+					comNet.sendSerialCommand(0, 4, comNet.configuration.GetServoBOffset());
+					comNet.WriteSerialCommand();
+					delay(200);
+				}
 				break;
 			default:
 				break;
@@ -430,7 +453,7 @@ int changeNumericSettingValue(String name, int initialValue, int minValue, int m
 }
 
 bool changeBoolSettingValue(String name, bool initialValue) {
-	int value = initialValue;
+	bool value = initialValue;
 	clrScreen();
 	lcd.setCursor(0, 0);
 	lcd.print(name);

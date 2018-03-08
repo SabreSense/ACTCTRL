@@ -142,7 +142,7 @@ SerialCommand SerialCom::readSerialInput() {
 	SerialCommand command(NULL, NULL);
 	if (thisSerial->available() > 0) {
 		thisSerial->readBytes(_packetIn, configuration.CrtPackLength());
-		lastComTime = micros();
+		lastComTime = millis();
 		timedOut = false;
 		if (checkInitial(_packetIn) == true) {
 			// For use with usb only
@@ -177,7 +177,7 @@ SerialCommand SerialCom::readSerialInput() {
 			//thisSerial->print("Leading check failed");		
 		}
 	}
-	else if ((micros() - lastComTime) > 1000) {
+	else if ((millis() - lastComTime) > 1000) {
 		//establishContactPing();
 		timedOut = true;
 	}
@@ -257,7 +257,6 @@ void SerialCom::executeConfig(int packet[30]) {
 			bool done = getValueSection(_valuePacket, packet);
 			_val = dataConverter.MessageValue(_valuePacket);
 			configuration.SetServoUpLimit(_val);
-			//sendSerialCommand(2, 8, configuration.NetSize());
 		}
 		break;
 		case 3:
@@ -265,14 +264,18 @@ void SerialCom::executeConfig(int packet[30]) {
 			bool done = getValueSection(_valuePacket, packet);
 			_val = dataConverter.MessageValue(_valuePacket);
 			configuration.SetServoDownLimit(_val);
-			//sendSerialCommand(2, 8, configuration.NetSize());
 		}
 		case 4:
 		{
 			bool done = getValueSection(_valuePacket, packet);
 			_val = dataConverter.MessageValue(_valuePacket);
 			configuration.SetServoBOffset(_val);
-			//sendSerialCommand(2, 8, configuration.NetSize());
+		}
+		case 5:
+		{
+			bool done = getValueSection(_valuePacket, packet);
+			_val = dataConverter.MessageValue(_valuePacket);
+			configuration.SetTakeOff(_val);
 		}
 		default:
 			// FOR DEBUGGING

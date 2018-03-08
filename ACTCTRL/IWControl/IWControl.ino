@@ -149,6 +149,7 @@ void setup() {
 
 	//encoderTest();
 	bool stopped = false;
+	delay(500);
 	initialiseServos();
 
 	digitalWrite(statusRed, HIGH);
@@ -170,8 +171,8 @@ void loop() {
 	}
 
 	// Reinitialise servos if new config data available
-	if (comNet.configReset = true) {
-		initialiseServos();
+	if (comNet.configReset = true && comNet.timedOut) {
+		//initialiseServos();
 		comNet.configReset = false;
 	}
 
@@ -201,14 +202,15 @@ void loop() {
 	float transmitDiff = lastTransmitAngle - servoAngle;
 
 	if (abs(transmitDiff) > 1) {
-		comNet.sendSerialCommand(2, 1, servoAngle);
+		//comNet.sendSerialCommand(2, 1, servoAngle);
 		// DEBUG ONLY
 		//digitalWrite(statusRed, HIGH);
 		//digitalWrite(statusGreen, LOW);
 	}
 
 	if (comNet.timedOut == true) {
-		comNet.sendSerialCommand(2, 1, servoAngle);
+		//comNet.sendSerialCommand(2, 1, servoAngle);
+		comNet.timedOut = false;
 	}
 
 	// If command to be sent, send command
@@ -332,15 +334,24 @@ void ServoControl() {
 
 		thisServo.write(servoPower);*/
 
-		float rotaryAngleA = (((encoderA.read() - encoderMinAngleA) / (encoderMaxAngleA - encoderMinAngleA)) * 40);
-		float rotaryAngleB = (((encoderB.read() - encoderMinAngleB) / (encoderMaxAngleB - encoderMinAngleB)) * 40);
+		float rotaryAngleA = (((encoderA.read() - encoderMinAngleA) / (encoderMaxAngleA - encoderMinAngleA)) * 35);
+		float rotaryAngleB = (((encoderB.read() - encoderMinAngleB) / (encoderMaxAngleB - encoderMinAngleB)) * 35);
 		servoAngleA = rotaryToServoAngle(rotaryAngleA);
 		servoAngleB = rotaryToServoAngle(rotaryAngleB);
 		servoAngle = (servoAngleA + servoAngleB) / 2;
 		//float servoPower = (0.025*pow(desiredAngle, 2)) + 4 * pow(10, -15)*desiredAngle - 10;
 		//thisServo.write(servoPower);
 		
+		//float desiredServoInput = servoAngleToLinearInput(desiredAngle);
+		float servoRange = downPos - upPos;
+		//float desiredServoInput = rotaryToServoAngle(((desiredAngle+10)/40)*35);
+		//float desiredServoInput = upPos + (((0.0152*pow(desiredAngle, 2)) + 0.6095 *desiredAngle - 10)/35);
+		//float desiredServoInput = upPos + servoRange * ((desiredAngle + 10) / 40);
 		float desiredServoInput = servoAngleToLinearInput(desiredAngle);
+		/*if (desiredAngle = 0) {
+			desiredServoInput = 60;
+		}*/
+
 		if (desiredServoInput < upPos) {
 			desiredServoInput = upPos;
 		}
@@ -364,7 +375,7 @@ void initialiseServos() {
 	int lastEncoderPosB = encoderB.read();
 	int timeOut = 0;
 
-	while (timeOut < 20)
+	while (timeOut < 50)
 	{
 		int newPosA = encoderA.read();
 		int newPosB = encoderB.read();
@@ -397,7 +408,7 @@ void initialiseServos() {
 	servoA.write(downPos);
 	servoB.write(downPos + servoBOffset);
 	delay(200);
-	while (timeOut < 20)
+	while (timeOut < 50)
 	{
 		int newPosA = encoderA.read();
 		int newPosB = encoderB.read();
@@ -431,13 +442,13 @@ void initialiseServos() {
 
 // Convert rotary encoder angle to the angle of the flap
 float rotaryToServoAngle(float rotaryAngle) {
-	return (0.0125*pow(rotaryAngle, 2)) + 0.6095 *rotaryAngle - 10;
+	return (0.0152*pow(rotaryAngle, 2)) + 0.6095 *rotaryAngle - 10;
 }
 
 // Convert a desired flap angle to a linear servo input
 float servoAngleToLinearInput(float desiredAngle) {
 	float servoRange = downPos - upPos;
-	return upPos + (((-0.6095 + pow((pow(0.6095,2)-4*0.0125*(-10+desiredAngle)),0.5)) / (2 * 0.0125))/35)*servoRange;
+	return upPos + ((((-0.6095 + pow((pow(0.6095, 2) - 4 * 0.0152*(-10 - desiredAngle)), 0.5)) / (2 * 0.0152)) / 35)*servoRange);
 }
 
 //void encoderTest() {
