@@ -20,12 +20,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)ConfigManager.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)DataByteConverter.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RedNet.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)SerialCom.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)SerialCommand.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)ConfigManager.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)DataByteConverter.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)SerialCom.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)SerialCommand.h" />
   </ItemGroup>

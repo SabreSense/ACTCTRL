@@ -29,10 +29,20 @@
 SerialCom::SerialCom() {
 	//upNetConfig(configuration);
 	//_configuration = new ConfigManager();
+	//HardwareSerial *thisSerial;
+	//thisSerial = &Serial;
+}
+
+void SerialCom::Begin(HardwareSerial *desiredSerial, float flapAngle) {
+	thisSerial = desiredSerial;
+	thisSerial->begin(9600);
+	configuration.Init();
+	serialFlapPos = flapAngle;
 }
 
 void SerialCom::Begin() {
-	Serial.begin(9600);
+	//thisSerial = Serial;
+	thisSerial->begin(9600);
 	configuration.Init();
 	serialFlapPos = 0;
 	// DEBUGGING ONLY
@@ -45,8 +55,8 @@ void SerialCom::Begin() {
 // Establish contact with debugger
 void SerialCom::establishContact() {
 	digitalWrite(LED_BUILTIN, HIGH);
-	while (Serial.available() <= 0) {
-		Serial.print("A");
+	while (thisSerial->available() <= 0) {
+		thisSerial->print("A");
 		delay(200);
 	}
 	digitalWrite(LED_BUILTIN, LOW);
@@ -57,11 +67,15 @@ void SerialCom::establishContact() {
 // Establish contact by waiting for an instruction and responding with an angle
 void SerialCom::establishContact(float angle) {
 	digitalWrite(LED_BUILTIN, HIGH);
-	while (Serial.available() <= 0) {
-		delay(200);
+	while (thisSerial->available() <= 0) {
+		digitalWrite(LED_BUILTIN, HIGH);
+		delay(100);
+		digitalWrite(LED_BUILTIN, LOW);
+		delay(100);
 	}
 	readSerialInput();
 	sendSerialCommand(2, 1, angle);
+	WriteSerialCommand();
 	digitalWrite(LED_BUILTIN, LOW);
 	//Serial.print("A");
 	//Serial.print("Contact established");
@@ -69,7 +83,8 @@ void SerialCom::establishContact(float angle) {
 
 // Establish contact by requesting ping
 void SerialCom::establishContactPing() {
-	digitalWrite(LED_BUILTIN, HIGH);
+	digitalWrite(_statusRedLight, HIGH);
+	digitalWrite(_statusGreenLight, LOW);
 	
 	bool contact = false;
 	while (contact == false) {
@@ -77,14 +92,15 @@ void SerialCom::establishContactPing() {
 		// If command to be sent, send command
 		WriteSerialCommand();
 		// If serial input available, run serial input functions
-		if (Serial.available() > 0) {
+		if (thisSerial->available() > 0) {
 			readSerialInput();
 			contact = true;
 			break;
 		}
 		delay(200);
 	}
-	digitalWrite(LED_BUILTIN, LOW);
+	digitalWrite(_statusRedLight, LOW);
+	digitalWrite(_statusGreenLight, HIGH);
 	//Serial.print("A");
 	//Serial.print("Contact established");
 }
@@ -100,16 +116,21 @@ void SerialCom::sendSerialCommand(int packetType, int dataType, float value)
 	_sent = false;
 }
 
-void SerialCom::WriteSerialCommand() {
+bool SerialCom::WriteSerialCommand() {
 	// If command to be sent, send command
-	if (Serial.available() <= 0 && _sent == false) {
-		Serial.write(_messagePacket, configuration.crtPackLength);
+	if (thisSerial->available() <= 0 && _sent == false) {
+		thisSerial->write(_messagePacket, configuration.CrtPackLength());
 		_sent = true;
-		delay(500);
+		//delay(500);
 		//digitalWrite(motorLight, LOW);
+		return true;
 	}
-	else if (_sent == false) {
-		//digitalWrite(motorLight, HIGH);
+	//else if (_sent == false) {
+	//	//digitalWrite(motorLight, HIGH);
+	//	return false;
+	//}
+	else {
+		return false;
 	}
 }
 
@@ -119,38 +140,46 @@ void SerialCom::WriteSerialCommand() {
 // Read and interpret the incoming packet
 SerialCommand SerialCom::readSerialInput() {
 	SerialCommand command(NULL, NULL);
-	Serial.readBytes(_packetIn, configuration.crtPackLength);
-	if (checkInitial(_packetIn) == true) {
-		// For use with usb only
-		for (int ii = 4; ii <= configuration.crtPackLength - 1; ii++) {
-			_packetInInt[ii - 4] = int(_packetIn[ii]) - 48;
-		}
-		if (checkSumCheck(_packetInInt) == true) {
-			switch (_packetInInt[0]) {
-			case 0:
-				executeConfig(_packetInInt);
-				break;
-			case 1:
-				executeCommonCommands(_packetInInt);
-				if (checkSenderValid(_packetInInt)) {
-					command = returnCommandInfo(_packetInInt);
-				}			
-				break;
-			case 2:
-				readInfo(_packetInInt);
-				break;
-			default:
-				// DEBUG ONLY
-				Serial.print("Invalid type");
-				break;
+	if (thisSerial->available() > 0) {
+		thisSerial->readBytes(_packetIn, configuration.CrtPackLength());
+		lastComTime = millis();
+		timedOut = false;
+		if (checkInitial(_packetIn) == true) {
+			// For use with usb only
+			for (int ii = 4; ii <= configuration.CrtPackLength() - 1; ii++) {
+				_packetInInt[ii - 4] = int(_packetIn[ii]) - 48;
+			}
+			if (checkSumCheck(_packetInInt) == true) {
+				switch (_packetInInt[0]) {
+				case 0:
+					executeConfig(_packetInInt);
+					break;
+				case 1:
+					executeCommonCommands(_packetInInt);
+					if (checkSenderValid(_packetInInt)) {
+						command = returnCommandInfo(_packetInInt);
+					}
+					break;
+				case 2:
+					readInfo(_packetInInt);
+					break;
+				default:
+					// DEBUG ONLY
+					thisSerial->print("Invalid type");
+					break;
+				}
+			}
+			else {
+				thisSerial->print("Checksum failed");
 			}
 		}
 		else {
-			Serial.print("Checksum failed");
+			//thisSerial->print("Leading check failed");		
 		}
 	}
-	else {
-		//Serial.print("Leading check failed");		
+	else if ((millis() - lastComTime) > 1000) {
+		//establishContactPing();
+		timedOut = true;
 	}
 	return command;
 }
@@ -163,14 +192,14 @@ void SerialCom::executeCommonCommands(int packet[30]) {
 			sendSerialCommand(2, 0, _pingCount);
 			break;
 		case 8:
-			sendSerialCommand(2, 8, configuration.netSize);
+			sendSerialCommand(2, 8, configuration.NetSize());
 			break;
 		case 9:
-			sendSerialCommand(2, 9, configuration.controlID);
+			sendSerialCommand(2, 9, configuration.ControlID());
 			break;
 		default:
 			// DEBUG ONLY
-			// Serial.print("No instruction");
+			// thisSerial->print("No instruction");
 			break;
 		}
 	}
@@ -179,7 +208,7 @@ void SerialCom::executeCommonCommands(int packet[30]) {
 SerialCommand SerialCom::returnCommandInfo(int packet[30]) {
 	if (checkSenderValid(packet)) {
 		bool done = getValueSection(_valuePacket, packet);
-		_val = messageValue(_valuePacket);
+		_val = dataConverter.MessageValue(_valuePacket);
 		SerialCommand command(packet[1], _val);
 		return command;
 	}
@@ -191,43 +220,69 @@ SerialCommand SerialCom::returnCommandInfo(int packet[30]) {
 
 void SerialCom::executeConfig(int packet[30]) {
 	if (checkSenderValid(packet)) {
-		Serial.print("Configging");
+		//thisSerial->print("Configging");
 		switch (packet[1]) {
 		case 0:
 		{
-			//Serial.print("ControlID");
+			//thisSerial->print("ControlID");
 			bool done = getValueSection(_valuePacket, packet);
-			_val = messageValue(_valuePacket);
-			//Serial.print(val);
-			if (_val <= configuration.netSize && _val > 0) {
-				configuration.setControlID(_val);
+			_val = dataConverter.MessageValue(_valuePacket);
+			//thisSerial->print(val);
+			if (_val <= configuration.NetSize() && _val > 0) {
+				configuration.SetControlID(_val);
 				//createOutputPacket(2, 9, controlID, responsePacket);
-				sendSerialCommand(2, 9, configuration.controlID);
+				sendSerialCommand(2, 9, configuration.ControlID());
 				//DEBUG ONLY
-				//Serial.write(" Response: ");
-				//Serial.write(responsePacket, crtPackLength);
+				//thisSerial->write(" Response: ");
+				//thisSerial->write(responsePacket, crtPackLength);
 			}
 		}
 		break;
 		case 1:
 		{
 			bool done = getValueSection(_valuePacket, packet);
-			_val = messageValue(_valuePacket);
+			_val = dataConverter.MessageValue(_valuePacket);
 			if (_val < 10 && _val >= 1) {
-				configuration.setNetSize(_val);
+				configuration.SetNetSize(_val);
 				//createOutputPacket(2, 8, netSize, responsePacket);
-				sendSerialCommand(2, 8, configuration.netSize);
+				sendSerialCommand(2, 8, configuration.NetSize());
 				//DEBUG ONLY
-				//Serial.write(" Response: ");
-				//Serial.write(responsePacket, crtPackLength);
+				//thisSerial->write(" Response: ");
+				//thisSerial->write(responsePacket, crtPackLength);
 			}
 		}
 		break;
+		case 2:
+		{
+			bool done = getValueSection(_valuePacket, packet);
+			_val = dataConverter.MessageValue(_valuePacket);
+			configuration.SetServoUpLimit(_val);
+		}
+		break;
+		case 3:
+		{
+			bool done = getValueSection(_valuePacket, packet);
+			_val = dataConverter.MessageValue(_valuePacket);
+			configuration.SetServoDownLimit(_val);
+		}
+		case 4:
+		{
+			bool done = getValueSection(_valuePacket, packet);
+			_val = dataConverter.MessageValue(_valuePacket);
+			configuration.SetServoBOffset(_val);
+		}
+		case 5:
+		{
+			bool done = getValueSection(_valuePacket, packet);
+			_val = dataConverter.MessageValue(_valuePacket);
+			configuration.SetTakeOff(_val);
+		}
 		default:
 			// FOR DEBUGGING
-			Serial.print("No config");
+			thisSerial->print("No config");
 			break;
 		}
+		configReset = true;
 	}
 }
 
@@ -238,12 +293,19 @@ void SerialCom::readInfo(int packet[30]) {
 		case 1:
 		{
 			bool done = getValueSection(_valuePacket, packet);
-			serialFlapPos = messageValue(_valuePacket);
+			serialFlapPos = dataConverter.MessageValue(_valuePacket);
+		}
+		break;
+		case 2:
+		{
+			bool done = getValueSection(_valuePacket, packet);
+			serialFlapPos = dataConverter.MessageValue(_valuePacket);
+			stopped = true;
 		}
 		break;
 		default:
 			//FOR DEBUGGING
-			//Serial.print("No info");
+			//thisSerial->print("No info");
 			break;
 		}
 	}
@@ -263,21 +325,21 @@ bool SerialCom::checkSenderValid(int packet[30]) {
 		break;
 	case 1:
 		// FOR DEBUGGING
-		//Serial.print("Case 1 Control ID = ");
-		//Serial.print(configuration.controlID, DEC);
-		if (configuration.controlID == 0) {
+		//thisSerial->print("Case 1 Control ID = ");
+		//thisSerial->print(configuration.controlID, DEC);
+		if (configuration.ControlID() == 0) {
 			if (int(packet[9]) == 2 && int(packet[10]) == 1) {
 				valid = true;
 			}
 		}
 		else {
-			if (int(packet[9]) == 2 && int(packet[10]) == 1 && packet[9 + 2 * configuration.controlID] == 0 && packet[10 + 2 * configuration.controlID] == 0) {
+			if (int(packet[9]) == 2 && int(packet[10]) == 1 && packet[9 + 2 * configuration.ControlID()] == 0 && packet[10 + 2 * configuration.ControlID()] == 0) {
 				valid = true;
 			}
 		}
 		break;
 	case 2:
-		if (configuration.controlID == 0) {
+		if (configuration.ControlID() == 0) {
 			if (int(packet[11]) == 2 && int(packet[12]) == 1) {
 				valid = true;
 			}
@@ -289,10 +351,10 @@ bool SerialCom::checkSenderValid(int packet[30]) {
 	}
 	// FOR DEBUGGING
 	/*if (valid) {
-		Serial.print(" Valid");
+		thisSerial->print(" Valid");
 	}
 	else {
-		Serial.print(" Invalid");
+		thisSerial->print(" Invalid");
 	}*/
 	return valid;
 }
@@ -311,22 +373,22 @@ bool SerialCom::checkInitial(byte packet[30]) {
 bool SerialCom::checkSumCheck(int packet[30]) {
 	//if (isAlphaNumeric(packet[18]) == true && isAlphaNumeric(packet[17]) == true && isAlpha(packet[18]) == false && isAlpha(packet[17]) == false){
 	//if (isAlphaNumeric(packet[18]) == true && isAlphaNumeric(packet[17]) == true){
-	int chkValue = (packet[configuration.crtPackLength - 6] * 10) + packet[configuration.crtPackLength - 5];
+	int chkValue = (packet[configuration.CrtPackLength() - 6] * 10) + packet[configuration.CrtPackLength() - 5];
 	int streamValue = calcChkSum(packet);
 	if (chkValue == streamValue) {
 		return true;
 	}
 	else {
 		//FOR DEBUGGING
-		//Serial.write("Stream val: ");
-		//Serial.print(streamValue, DEC);
-		//Serial.write(" chkValue: ");
-		//Serial.print(chkValue, DEC);
+		thisSerial->write("Stream val: ");
+		thisSerial->print(streamValue, DEC);
+		thisSerial->write(" chkValue: ");
+		thisSerial->print(chkValue, DEC);
 		return false;
 	}
 	//  }
 	//  else {
-	//    Serial.print("Alphanumeric problem");
+	//    thisSerial->print("Alphanumeric problem");
 	//    return false;
 	//  }
 }
@@ -334,9 +396,9 @@ bool SerialCom::checkSumCheck(int packet[30]) {
 // Calculate checksum value
 int SerialCom::calcChkSum(int packet[30]) {
 	int streamValue = 0;
-	//Serial.write(" CHKSUM LENGTH: ");
-	//Serial.print(crtPackLength - 7, DEC);
-	for (int ii = 0; ii <= configuration.crtPackLength - 7; ii++) {
+	//thisSerial->write(" CHKSUM LENGTH: ");
+	//thisSerial->print(crtPackLength - 7, DEC);
+	for (int ii = 0; ii <= configuration.CrtPackLength() - 7; ii++) {
 		streamValue = streamValue + packet[ii];
 	}
 	return streamValue;
@@ -350,34 +412,24 @@ bool SerialCom::getValueSection(int returnArray[7], int inputPacket[30]) {
 	return true;
 }
 
-// Convert the message values into a useable float value
-float SerialCom::messageValue(int valueArray[7]) {
-	float value = 0;
-	value = value + valueArray[1] * 1000 + valueArray[2] * 100 + valueArray[3] * 10 + valueArray[4] + valueArray[5] * 0.1 + valueArray[6] * 0.01;
-	if (valueArray[0] == 1) {
-		value = -value;
-	}
-	return value;
-}
-
 // SERIAL RESPONSE
 // ---------------
 
 // Convert the checksum number into induvidual digits for transmittion
 void SerialCom::getChkBytes(int chkSum, int values[2]) {
 	//DEBUG ONLY
-	//  Serial.print(chkSum, DEC);
+	//  thisSerial->print(chkSum, DEC);
 	for (int jj = 1; jj <= 2; jj++) {
 		for (int ii = 1; ii <= 10; ii++) {
 			int test = ii*pow(10, 2 - jj) + (values[0] * 10) + values[1];
-			//DEBUG ONLY
-			//      Serial.print(test, DEC);
-			//      Serial.write(",");
+			// DEBUG ONLY
+			//      thisSerial->print(test, DEC);
+			//      thisSerial->write(",");
 			if (test > chkSum) {
 				values[jj - 1] = ii - 1;
 				//DEBUG ONLY        
-				//        Serial.print(values[jj-1], DEC);
-				//        Serial.write(",,");
+				//        thisSerial->print(values[jj-1], DEC);
+				//        thisSerial->write(",,");
 				break;
 			}
 		}
@@ -387,7 +439,7 @@ void SerialCom::getChkBytes(int chkSum, int values[2]) {
 // Generate the output packet for transmittion
 void SerialCom::createOutputPacket(int type, int dataType, float value, byte responsePacket[30]) {
 	int valueArray[] = { 0,0,0,0,0,0,0 };
-	floatToMessageValue(value, valueArray);
+	dataConverter.FloatToMessageValue(value, valueArray);
 	int holdResponsePacket[30];
 	//= {type, dataType, valueArray[0], valueArray[1], valueArray[2], valueArray[3], valueArray[4], valueArray[5], valueArray[6], 0, 0, 2, 1, 0, 0};
 	holdResponsePacket[0] = type;
@@ -395,25 +447,25 @@ void SerialCom::createOutputPacket(int type, int dataType, float value, byte res
 	for (int iii = 2; iii <= 8; iii++) {
 		holdResponsePacket[iii] = valueArray[iii - 2];
 	}
-	for (int iii = 9; iii <= configuration.crtPackLength - 3; iii++) {
+	for (int iii = 9; iii <= configuration.CrtPackLength() - 3; iii++) {
 		holdResponsePacket[iii] = 0;
 	}
-	holdResponsePacket[9 + 2 * configuration.controlID] = 2;
-	holdResponsePacket[10 + 2 * configuration.controlID] = 1;
+	holdResponsePacket[9 + 2 * configuration.ControlID()] = 2;
+	holdResponsePacket[10 + 2 * configuration.ControlID()] = 1;
 	int chkSum = calcChkSum(holdResponsePacket);
 	int values[2] = { 0,0 };
 	getChkBytes(chkSum, values);
-	holdResponsePacket[configuration.crtPackLength - 6] = values[0];
-	holdResponsePacket[configuration.crtPackLength - 5] = values[1];
+	holdResponsePacket[configuration.CrtPackLength() - 6] = values[0];
+	holdResponsePacket[configuration.CrtPackLength() - 5] = values[1];
 
 	//DEBUG ONLY
-	//Serial.write("chk num: ");
-	//Serial.print(chkSum, DEC);
-	//Serial.write("chk val: ");
-	//Serial.print(values[0], DEC);
-	//Serial.print(values[1], DEC);
+	//thisSerial->write("chk num: ");
+	//thisSerial->print(chkSum, DEC);
+	//thisSerial->write("chk val: ");
+	//thisSerial->print(values[0], DEC);
+	//thisSerial->print(values[1], DEC);
 
-	for (int ii = 4; ii <= configuration.crtPackLength - 1; ii++) {
+	for (int ii = 4; ii <= configuration.CrtPackLength() - 1; ii++) {
 		responsePacket[ii] = holdResponsePacket[ii - 4] + 48;
 	}
 	responsePacket[0] = 'A';
@@ -423,21 +475,21 @@ void SerialCom::createOutputPacket(int type, int dataType, float value, byte res
 }
 
 // Convert a message float value to an array of digits for transmittion
-void SerialCom::floatToMessageValue(float value, int responseBytes[7]) {
-	responseBytes[0] = 1;
-	if (value >= 0) {
-		responseBytes[0] = 0;
-	}
-	else {
-		value = -value;
-	}
-	for (int jj = 1; jj <= 6; jj++) {
-		for (int ii = 1; ii <= 10; ii++) {
-			float test = ii*pow(10, 4 - jj) + responseBytes[1] * 1000 + responseBytes[2] * 100 + responseBytes[3] * 10 + responseBytes[4] + responseBytes[5] * 0.1 + responseBytes[6] * 0.01;
-			if (test > value) {
-				responseBytes[jj] = ii - 1;
-				ii = 11;
-			}
-		}
-	}
-}
+//void SerialCom::floatToMessageValue(float value, int responseBytes[7]) {
+//	responseBytes[0] = 1;
+//	if (value >= 0) {
+//		responseBytes[0] = 0;
+//	}
+//	else {
+//		value = -value;
+//	}
+//	for (int jj = 1; jj <= 6; jj++) {
+//		for (int ii = 1; ii <= 10; ii++) {
+//			float test = ii*pow(10, 4 - jj) + responseBytes[1] * 1000 + responseBytes[2] * 100 + responseBytes[3] * 10 + responseBytes[4] + responseBytes[5] * 0.1 + responseBytes[6] * 0.01;
+//			if (test > value) {
+//				responseBytes[jj] = ii - 1;
+//				ii = 11;
+//			}
+//		}
+//	}
+//}

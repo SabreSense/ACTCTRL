@@ -15,6 +15,7 @@ Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		RedNet\RedNet.vcxitems*{0dc7dfac-0349-43a4-b9e3-3e85332f7771}*SharedItemsImports = 9
 		RedNet\RedNet.vcxitems*{10c00cc9-f1c7-48f7-80fa-918e53524cde}*SharedItemsImports = 4
+		RedNet\RedNet.vcxitems*{7fdc4742-67fe-47a0-84ab-3605e667b5ff}*SharedItemsImports = 4
 		RedNet\RedNet.vcxitems*{c5f80730-f44f-4478-bdae-6634efc2ca88}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

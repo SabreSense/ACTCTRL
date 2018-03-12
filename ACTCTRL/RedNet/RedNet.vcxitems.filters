@@ -23,6 +23,9 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ConfigManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)DataByteConverter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="$(MSBuildThisFileDirectory)readme.txt" />
@@ -39,6 +42,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)ConfigManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)DataByteConverter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
