@@ -101,6 +101,12 @@ Adafruit_LiquidCrystal lcd(0);
 const int rowSize = 4;
 const int columnSize = 20;
 
+// Declarations to handle demo mode logic
+unsigned long demoLoopStart = millis();
+const unsigned long timeDiff = 12000;
+bool inDemo = false;
+int demoState = 1;
+
 void setup() {
 	// put your setup code here, to run once:
 	// Set up input button pins (using pins A0-A3 and D4)
@@ -133,15 +139,9 @@ void setup() {
 	//lcd.setBacklight(HIGH);
 	adjustBrightness(comNet.configuration.GetLCDBrightness());
 	// Print boot message to the LCD.
-	lcd.print("Flap Controller v0.2");
+	lcd.print("AVDASI 2 TEAM A");
 	lcd.setCursor(0, 1);
-	lcd.print("Net Size: ");
-	//lcd.print(netSize);
-	lcd.print(comNet.configuration.NetSize());
-	lcd.setCursor(0, 2);
-	lcd.print("Pkt Length: ");
-	//lcd.print(crtPackLength);
-	lcd.print(comNet.configuration.CrtPackLength());
+	lcd.print("FLAP CONTROLLER v1.0");
 	lcd.setCursor(0, 3);
 	lcd.print("Initialising...");
 
@@ -177,6 +177,14 @@ void setup() {
 
 	// ESTABLISH COMMUNICATIONS. COMMENT OUT FOR DEBUGGING IF NECESSARY
 	comNet.Begin();
+	lcd.setCursor(0, 2);
+	if (comNet.configuration.ControlMode() == 1) {
+		lcd.print("DEMO MODE");
+	}
+	else {
+		lcd.print("NORMAL MODE");
+	}
+	
 	lcd.setCursor(0, 3);
 	lcd.print("Connecting...   ");
 	comNet.establishContactPing();
@@ -196,62 +204,120 @@ void loop() {
 	// If serial input available, run serial input functions
 	comNet.readSerialInput();
 
-	if (digitalRead(upperLimitPin) == LOW && digitalRead(lowerLimitPin) == LOW) {
-		runConfigMode();
-	}
-
-	if (digitalRead(zeroBtnPin) == LOW)
-	{
-		comNet.sendSerialCommand(1, 1, 0);
-		flapSetPos = 0;
-		stopSet = false;
-		digitalWrite(trimIndPin, LOW);
-	}
-	else if (digitalRead(upperLimitPin) == LOW) {
-		comNet.sendSerialCommand(1, 1, comNet.configuration.UpperLimit());
-		flapSetPos = comNet.configuration.UpperLimit();
-		stopSet = false;
-		digitalWrite(trimIndPin, LOW);
-	}
-	else if (digitalRead(takeoffBtnPin) == LOW) {
-		comNet.sendSerialCommand(1, 1, comNet.configuration.TakeOff());
-		flapSetPos = comNet.configuration.TakeOff();
-		stopSet = false;
-		digitalWrite(trimIndPin, LOW);
-	}
-	else if (digitalRead(lowerLimitPin) == LOW) {
-		comNet.sendSerialCommand(1, 1, comNet.configuration.LowerLimit());
-		// Set desired position
-		flapSetPos = comNet.configuration.LowerLimit();
-		stopSet = false;
-		digitalWrite(trimIndPin, LOW);
-	}
-	else if (digitalRead(stopBtnPin) == LOW) {
-		comNet.sendSerialCommand(1, 2, flapAvePos);
-		// Set desired position
-		flapSetPos = flapAvePos;
-		stopSet = true;
-		digitalWrite(trimIndPin, LOW);
-	}
-
 	// Update current position from serial communication
 	flapAvePos = comNet.serialFlapPos;
 
-	int encDiff = thisEncoder.read() - lastEncoderPos;
-
-	if (abs(encDiff) > 4) {
-		int angleDiff = encDiff / 4;
-		// Set desired position
-		flapSetPos = flapSetPos + angleDiff;
-		if (flapSetPos > comNet.configuration.LowerLimit()) {
-			flapSetPos = comNet.configuration.LowerLimit();
+	// Check which mode the controller is in
+	if (comNet.configuration.ControlMode() == 1) {
+		stopSet = false;
+		digitalWrite(trimIndPin, LOW);
+		if (!inDemo) {
+			lcd.setCursor(0, 2);
+			lcd.print("DEMO MODE   ");
+			inDemo = true;
 		}
-		else if (flapSetPos < comNet.configuration.UpperLimit()) {
+		if (digitalRead(stopBtnPin) == LOW) {
+			comNet.configuration.SetControlMode(0);
+		}
+		unsigned long timePassed = millis() - demoLoopStart;
+		if (timePassed > timeDiff) {
+			demoLoopStart = millis();
+			demoState = demoState + 1;
+		}
+		switch (demoState) {
+		case 1:
+			// Go to clean wing configuration
+			comNet.sendSerialCommand(1, 1, 0);
+			flapSetPos = 0;
+			break;
+		case 2:
+			// Go to -10 deg
+			comNet.sendSerialCommand(1, 1, comNet.configuration.UpperLimit());
 			flapSetPos = comNet.configuration.UpperLimit();
+			break;
+		case 3:
+			// Go to 30 deg
+			comNet.sendSerialCommand(1, 1, comNet.configuration.LowerLimit());
+			flapSetPos = comNet.configuration.LowerLimit();
+			break;
+		case 4:
+			// Go back to clean wing configuration
+			comNet.sendSerialCommand(1, 1, 0);
+			flapSetPos = 0;
+			break;
+		case 5:
+			// Go to takeoff configuration
+			comNet.sendSerialCommand(1, 1, comNet.configuration.TakeOff());
+			flapSetPos = comNet.configuration.TakeOff();
+			break;
+		default:
+			// Reset to beginning
+			demoState = 1;
+			break;
 		}
-		comNet.sendSerialCommand(1, 1, flapSetPos);
-		lastEncoderPos = thisEncoder.read();
-		digitalWrite(trimIndPin, HIGH);
+	}
+	else {
+		// Continue with normal operation
+
+		if (inDemo) {
+			lcd.setCursor(0, 2);
+			lcd.print("            ");
+			inDemo = false;
+		}
+		if (digitalRead(upperLimitPin) == LOW && digitalRead(lowerLimitPin) == LOW) {
+			runConfigMode();
+		}
+
+		if (digitalRead(zeroBtnPin) == LOW)
+		{
+			comNet.sendSerialCommand(1, 1, 0);
+			flapSetPos = 0;
+			stopSet = false;
+			digitalWrite(trimIndPin, LOW);
+		}
+		else if (digitalRead(upperLimitPin) == LOW) {
+			comNet.sendSerialCommand(1, 1, comNet.configuration.UpperLimit());
+			flapSetPos = comNet.configuration.UpperLimit();
+			stopSet = false;
+			digitalWrite(trimIndPin, LOW);
+		}
+		else if (digitalRead(takeoffBtnPin) == LOW) {
+			comNet.sendSerialCommand(1, 1, comNet.configuration.TakeOff());
+			flapSetPos = comNet.configuration.TakeOff();
+			stopSet = false;
+			digitalWrite(trimIndPin, LOW);
+		}
+		else if (digitalRead(lowerLimitPin) == LOW) {
+			comNet.sendSerialCommand(1, 1, comNet.configuration.LowerLimit());
+			// Set desired position
+			flapSetPos = comNet.configuration.LowerLimit();
+			stopSet = false;
+			digitalWrite(trimIndPin, LOW);
+		}
+		else if (digitalRead(stopBtnPin) == LOW) {
+			comNet.sendSerialCommand(1, 2, flapAvePos);
+			// Set desired position
+			flapSetPos = flapAvePos;
+			stopSet = true;
+			digitalWrite(trimIndPin, LOW);
+		}
+
+		int encDiff = thisEncoder.read() - lastEncoderPos;
+
+		if (abs(encDiff) > 4) {
+			int angleDiff = encDiff / 4;
+			// Set desired position
+			flapSetPos = flapSetPos + angleDiff;
+			if (flapSetPos > comNet.configuration.LowerLimit()) {
+				flapSetPos = comNet.configuration.LowerLimit();
+			}
+			else if (flapSetPos < comNet.configuration.UpperLimit()) {
+				flapSetPos = comNet.configuration.UpperLimit();
+			}
+			comNet.sendSerialCommand(1, 1, flapSetPos);
+			lastEncoderPos = thisEncoder.read();
+			digitalWrite(trimIndPin, HIGH);
+		}
 	}
 
 	// LCD functions go at the end otherwise they interfere with smooth operation
@@ -259,7 +325,7 @@ void loop() {
 	if (!isFlapAtSet()) {
 		lcd.setCursor(0, 1);
 		lcd.print("Moving to ");
-		lcd.print(flapSetPos);
+		lcd.print(flapSetPos, 0);
 		lcd.print("deg ");
 		digitalWrite(actRedPin, HIGH);
 		digitalWrite(actGreenPin, LOW);
@@ -274,11 +340,11 @@ void loop() {
 	}
 	if (stopSet && !comNet.stopped) {
 		lcd.setCursor(0, 2);
-		lcd.print("STOPPING...");
+		lcd.print("STOPPING...   ");
 	}
 	else if (stopSet && comNet.stopped) {
 		lcd.setCursor(0, 2);
-		lcd.print("STOPPED!   ");
+		lcd.print("STOPPED!      ");
 		stopSet = false;
 	}
 	else if (!stopSet && !comNet.stopped){
@@ -291,7 +357,7 @@ void loop() {
 	if (flapAvePos > 0) {
 		lcd.print(" ");
 	}
-	lcd.print(flapAvePos);
+	lcd.print(flapAvePos, 0);
 	lcd.print("deg  ");
 
 	// Finally, if command to be sent, send command
@@ -323,7 +389,7 @@ void runConfigMode() {
 	clrScreen();
 	lcd.setCursor(0, 0);
 	lcd.print("Select setting:");
-	String settingNames[6] = { "LCD Brightness  ", "TakeOff Angle   ", "Up Position     ", "Down Position   ", "Servo Offset    ", "Resync All      " };
+	String settingNames[8] = { "LCD Brightness  ", "TakeOff Angle   ", "Up Position     ", "Down Position   ", "Servo Offset    ", "Resync All      ", "Reinitialise    ", "Enter Demo Mode " };
 	bool exit = false;
 	bool reset = true;
 	int lastEncoderPosition = thisEncoder.read();
@@ -335,7 +401,7 @@ void runConfigMode() {
 			delay(500);
 			reset = false;
 			lastEncoderPos = thisEncoder.read();
-			int settingsLength = 6;
+			int settingsLength = 8;
 			if (encoderDiff > 0) {
 				encoderDiff = 1;
 			}
@@ -359,7 +425,7 @@ void runConfigMode() {
 			int value = 0;
 			switch (position) {
 			case 1:
-				value = changeBoolSettingValue(settingNames[0], comNet.configuration.GetLCDBrightness());
+				value = changeBoolSettingValue(settingNames[0], comNet.configuration.GetLCDBrightness(), 0);
 				comNet.configuration.SetLCDBrightness(value);
 				adjustBrightness(value);
 				break;
@@ -383,7 +449,7 @@ void runConfigMode() {
 				comNet.sendSerialCommand(0, 4, value);
 				break;
 			case 6:
-				value = changeBoolSettingValue(settingNames[5], false);
+				value = changeBoolSettingValue(settingNames[5], false, 0);
 				if (value == true) {
 					lcd.setCursor(0, 2);
 					lcd.print("Resyncing Config... ");
@@ -399,7 +465,26 @@ void runConfigMode() {
 					comNet.sendSerialCommand(0, 4, comNet.configuration.GetServoBOffset());
 					comNet.WriteSerialCommand();
 					delay(200);
+					comNet.sendSerialCommand(1, 3, flapSetPos);
+					comNet.WriteSerialCommand();
+					delay(200);
 				}
+				break;
+			case 7:
+				value = changeBoolSettingValue(settingNames[6], true, 1);
+				if (value) {
+					comNet.sendSerialCommand(1, 3, flapSetPos);
+					comNet.WriteSerialCommand();
+					delay(200);
+				}
+				break;
+			case 8:
+				value = changeBoolSettingValue(settingNames[7], true, 1);
+				if (value) {
+					comNet.configuration.SetControlMode(1);
+					delay(200);
+				}
+				exit = true;
 				break;
 			default:
 				break;
@@ -452,13 +537,13 @@ int changeNumericSettingValue(String name, int initialValue, int minValue, int m
 	return value;
 }
 
-bool changeBoolSettingValue(String name, bool initialValue) {
+bool changeBoolSettingValue(String name, bool initialValue, int type) {
 	bool value = initialValue;
 	clrScreen();
 	lcd.setCursor(0, 0);
 	lcd.print(name);
 	lcd.setCursor(0, 1);
-	printOnOff(value);
+	printOnOff(value, type);
 	int lastEncoderPosition = thisEncoder.read();
 	bool exit = false;
 	while (!exit) {
@@ -472,7 +557,7 @@ bool changeBoolSettingValue(String name, bool initialValue) {
 				value = true;
 			}
 			lcd.setCursor(0, 1);
-			printOnOff(value);
+			printOnOff(value, type);
 		}
 		if (digitalRead(takeoffBtnPin) == LOW) {
 			exit = true;
@@ -485,12 +570,26 @@ bool changeBoolSettingValue(String name, bool initialValue) {
 	return value;
 }
 
-void printOnOff(bool value) {
+void printOnOff(bool value, int type) {
 	if (value) {
-		lcd.print("On ");
+		switch (type) {
+		case 1:
+			lcd.print("Yes");
+			break;
+		default:
+			lcd.print("On ");
+			break;
+		}	
 	}
 	else {
-		lcd.print("Off");
+		switch (type) {
+		case 1:
+			lcd.print("No ");
+			break;
+		default:
+			lcd.print("Off");
+			break;
+		}
 	}
 }
 

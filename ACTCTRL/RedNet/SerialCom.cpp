@@ -123,6 +123,8 @@ bool SerialCom::WriteSerialCommand() {
 		_sent = true;
 		//delay(500);
 		//digitalWrite(motorLight, LOW);
+		lastComTime = millis();
+		timedOut = false;
 		return true;
 	}
 	//else if (_sent == false) {

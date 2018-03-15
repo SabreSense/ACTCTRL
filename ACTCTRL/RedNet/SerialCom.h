@@ -43,6 +43,8 @@ public:
 
 	bool configReset = false;
 
+	//int ControlMode = 0;
+
 private:
 	// Declare packet for response
 	byte _messagePacket[30];
@@ -84,7 +86,7 @@ private:
 	void getChkBytes(int chkSum, int values[2]);
 	void createOutputPacket(int type, int dataType, float value, byte responsePacket[30]);
 	//void floatToMessageValue(float value, int responseBytes[7]);
-	int lastComTime = 0;
+	unsigned long lastComTime = 0;
 };
 
 #endif

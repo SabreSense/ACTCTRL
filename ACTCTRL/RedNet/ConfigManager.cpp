@@ -93,6 +93,12 @@ int ConfigManager::GetCrtPackLength() {
 	return crtPackLength;
 }
 
+int ConfigManager::GetControlMode() {
+	int thisR = 0;
+	controlMode = EEPROM.get(_controlModeMem, thisR);
+	return controlMode;
+}
+
 // Generic function for returning a float value from EEPROM
 //////float ConfigManager::getFloatValue(int memAddress) {
 //////	int valueArray[7];
@@ -152,6 +158,11 @@ void ConfigManager::SetServoBOffset(int value) {
 void ConfigManager::SetLCDBrightness(bool value) {
 	EEPROM.put(_lcdBrightnessMem, value);
 	lcdBrightness = value;
+}
+
+void ConfigManager::SetControlMode(int value) {
+	EEPROM.put(_controlModeMem, value);
+	controlMode = value;
 }
 
 // Write a float or int value to an array location
